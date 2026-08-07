@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Điều Phối Xe Công Tác</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background:#f8fafc; }
+    .font-display { font-family: 'Oswald', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .in { border:1px solid #cbd5e1; border-radius:8px; padding:9px 11px; font-size:14px; width:100%; background:#fff; }
+    .in:focus { outline:2px solid #f59e0b; border-color:transparent; }
+    .in-sm { border:1px solid #cbd5e1; border-radius:8px; padding:6px 9px; font-size:13px; background:#fff; }
+    .in-sm:focus { outline:2px solid #f59e0b; border-color:transparent; }
+    .btn { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:500; padding:8px 14px; border-radius:8px; cursor:pointer; border:none; transition:.15s; }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-dark { background:#0f172a; color:#fff; } .btn-dark:hover:not(:disabled){ background:#1e293b; }
+    .btn-amber { background:#f59e0b; color:#0f172a; } .btn-amber:hover:not(:disabled){ background:#fbbf24; }
+    .btn-emerald { background:#059669; color:#fff; } .btn-emerald:hover:not(:disabled){ background:#047857; }
+    .btn-sky { background:#0284c7; color:#fff; } .btn-sky:hover:not(:disabled){ background:#0369a1; }
+    .btn-outline { background:#fff; border:1px solid #cbd5e1; color:#334155; } .btn-outline:hover:not(:disabled){ background:#f8fafc; }
+    .btn-outline-red { background:#fff; border:1px solid #fca5a5; color:#dc2626; } .btn-outline-red:hover:not(:disabled){ background:#fef2f2; }
+    .chip { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; padding:4px 10px; border-radius:999px; border:1px solid; white-space:nowrap; }
+    .ticket { position:relative; display:flex; border-radius:12px; border:1px solid #e2e8f0; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04); overflow:hidden; }
+    .ticket-stub { width:40px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .ticket-stub span { color:#fff; font-size:10px; letter-spacing:.2em; writing-mode:vertical-rl; font-family:'JetBrains Mono',monospace; }
+    .perf { position:relative; width:0; }
+    .perf .hole { position:absolute; left:-8px; width:16px; height:16px; border-radius:999px; background:#f8fafc; }
+    .perf .line { position:absolute; top:0; bottom:0; left:0; border-left:2px dashed #e2e8f0; }
+    .new-badge { position:absolute; top:8px; right:8px; display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:#fff; background:#f43f5e; padding:2px 8px; border-radius:999px; animation:pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+    .stat { border-radius:12px; border:1px solid; padding:16px; }
+    .fade-in { animation:fadeIn .25s ease; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
+    .spinner { border:2px solid #e2e8f0; border-top-color:#f59e0b; border-radius:999px; width:16px; height:16px; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="max-w-sm w-full bg-white border border-slate-200 rounded-xl shadow-sm p-7 text-center fade-in">
+      <div class="w-11 h-11 rounded-md bg-amber-500 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="ticket" class="w-5 h-5 text-slate-900"></i>
+      </div>
+      <h1 class="text-xl font-display mb-1">ĐIỀU PHỐI XE CÔNG TÁC</h1>
+      <p class="text-sm text-slate-500 mb-5">Đăng nhập bằng tài khoản Google của bạn để tiếp tục.</p>
+      <div id="googleSignInDiv" class="flex justify-center"></div>
+      <p id="loginError" class="text-xs text-red-600 mt-4 hidden"></p>
+    </div>
+  </div>
+
+  <div id="loading" class="hidden min-h-screen flex items-center justify-center gap-2 text-sm text-slate-400">
+    <div class="spinner"></div> Đang tải dữ liệu…
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="bg-slate-900 text-white">
+      <div class="max-w-5xl mx-auto px-5 py-5 flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-md bg-amber-500 flex items-center justify-center">
+            <i data-lucide="ticket" class="w-[18px] h-[18px] text-slate-900"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl leading-none font-display">ĐIỀU PHỐI XE CÔNG TÁC</h1>
+            <p class="text-xs text-slate-400 mt-0.5 font-mono">Đặt lịch · Duyệt · Sắp xe · Lịch trình</p>
+          </div>
+        </div>
+        <div id="userBadge" class="text-sm text-slate-300"></div>
+      </div>
+    </header>
+    <main id="main" class="max-w-5xl mx-auto px-5 py-6 space-y-5"></main>
+  </div>
+
+<script>
+// =============================================================================
+// CẤU HÌNH — điền đúng 2 giá trị này trước khi đưa lên GitHub Pages
+// =============================================================================
+const CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE'; // dạng https://script.google.com/macros/s/AKfycb.../exec
+
+// ---------------------------------------------------------------------------
+// TRẠNG THÁI CHUNG
+// ---------------------------------------------------------------------------
+const STATUS = {
+  cho_duyet:  { label: 'Chờ duyệt',                    chip: 'background:#fef3c7;color:#92400e;border-color:#fcd34d', stub: '#f59e0b', icon: 'clock' },
+  tu_choi:    { label: 'Từ chối',                       chip: 'background:#fee2e2;color:#b91c1c;border-color:#fca5a5', stub: '#ef4444', icon: 'x-circle' },
+  da_duyet:   { label: 'Đã duyệt · chờ sắp xe',         chip: 'background:#e0e7ff;color:#4338ca;border-color:#a5b4fc', stub: '#6366f1', icon: 'check-circle-2' },
+  da_sap_xe:  { label: 'Đã sắp xe · chờ lái xe nhận',   chip: 'background:#e0f2fe;color:#0369a1;border-color:#7dd3fc', stub: '#0ea5e9', icon: 'car' },
+  da_nhan:    { label: 'Lái xe đã nhận · đang đi',      chip: 'background:#d1fae5;color:#047857;border-color:#6ee7b7', stub: '#10b981', icon: 'car' },
+  hoan_thanh: { label: 'Hoàn thành',                    chip: 'background:#e2e8f0;color:#475569;border-color:#cbd5e1', stub: '#94a3b8', icon: 'check-circle-2' },
+};
+const ROLE_LABEL = { sales: 'Nhân viên kinh doanh', coordinator: 'Điều phối viên', driver: 'Lái xe' };
+
+let STATE = { user: null, cars: [], drivers: [], trips: [] };
+let ID_TOKEN = null;
+
+function fmtDate(s) {
+  if (!s) return '';
+  const [y, m, d] = String(s).split('-');
+  return d + '/' + m + '/' + y;
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------------------------------------------------------------------------
+// ĐĂNG NHẬP GOOGLE
+// ---------------------------------------------------------------------------
+window.addEventListener('load', () => {
+  if (typeof google === 'undefined' || !google.accounts) {
+    document.getElementById('loginError').textContent = 'Không tải được thư viện đăng nhập Google. Kiểm tra kết nối mạng và tải lại trang.';
+    document.getElementById('loginError').classList.remove('hidden');
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleCredentialResponse,
+    ux_mode: 'popup',
+  });
+  google.accounts.id.renderButton(document.getElementById('googleSignInDiv'), {
+    theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill',
+  });
+  lucide.createIcons();
+});
+
+function handleCredentialResponse(response) {
+  ID_TOKEN = response.credential;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('loading').classList.remove('hidden');
+  refresh().catch((err) => {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = (err && err.message) || String(err);
+    errEl.classList.remove('hidden');
+    ID_TOKEN = null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GỌI BACKEND (Apps Script) — luôn dùng GET kèm tham số trên URL để tránh
+// lỗi CORS khi gọi giữa 2 domain khác nhau (GitHub Pages ↔ script.google.com)
+// ---------------------------------------------------------------------------
+async function callServer(action, params) {
+  if (!ID_TOKEN) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang.');
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+    throw new Error('Chưa cấu hình APPS_SCRIPT_URL trong file này.');
+  }
+  const query = new URLSearchParams({ action: action, idToken: ID_TOKEN, ...(params || {}) });
+  const resp = await fetch(APPS_SCRIPT_URL + '?' + query.toString());
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || 'Đã có lỗi xảy ra.');
+  return json.data;
+}
+
+async function refresh() {
+  STATE = await callServer('bootstrap');
+  render();
+}
+
+async function runAction(promiseFn, successMsg) {
+  try {
+    await promiseFn();
+    await refresh();
+    if (successMsg) toast(successMsg);
+  } catch (err) {
+    toast((err && err.message) || String(err), true);
+  }
+}
+
+function toast(msg, isError) {
+  const el = document.createElement('div');
+  el.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-lg text-sm text-white shadow-lg z-50 fade-in ' + (isError ? 'bg-red-600' : 'bg-slate-900');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ---------------------------------------------------------------------------
+// COMPONENT: VÉ CÔNG TÁC
+// ---------------------------------------------------------------------------
+function ticketHtml(t, opts) {
+  opts = opts || {};
+  const meta = STATUS[t.status] || STATUS.cho_duyet;
+  const car = STATE.cars.find((c) => c.id === t.carId);
+  const driver = STATE.drivers.find((d) => d.id === t.driverId);
+  return `
+    <div class="ticket fade-in">
+      ${opts.isNew ? `<span class="new-badge"><i data-lucide="bell" class="w-[10px] h-[10px]"></i>MỚI</span>` : ''}
+      <div class="flex-1 p-4 pr-6">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-400 font-mono">Mã CV #${esc(t.id)}</div>
+            <h3 class="text-xl leading-tight font-display">${esc(t.employeeName)}
+              <span class="text-slate-400 font-normal text-sm ml-2">· ${esc(t.department)}</span>
+            </h3>
+          </div>
+          <span class="chip shrink-0" style="${meta.chip}"><i data-lucide="${meta.icon}" class="w-[13px] h-[13px]"></i>${meta.label}</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-sm text-slate-600 mt-3">
+          <div class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-[14px] h-[14px] text-slate-400"></i>${esc(t.destination)}</div>
+          <div class="flex items-center gap-1.5"><i data-lucide="calendar-range" class="w-[14px] h-[14px] text-slate-400"></i>
+            <span class="font-mono">${fmtDate(t.startDate)}${t.endDate !== t.startDate ? ' → ' + fmtDate(t.endDate) : ''}</span></div>
+          <div class="flex items-center gap-1.5"><i data-lucide="users" class="w-[14px] h-[14px] text-slate-400"></i>${esc(t.passengers)} người</div>
+          ${car ? `<div class="flex items-center gap-1.5 text-emerald-700"><i data-lucide="car" class="w-[14px] h-[14px]"></i>${esc(car.plate)} · ${esc(car.type)}</div>` : ''}
+        </div>
+        ${t.purpose ? `<p class="text-sm text-slate-500 mt-2 italic">"${esc(t.purpose)}"</p>` : ''}
+        ${t.note ? `<p class="text-xs text-slate-400 mt-1">Ghi chú: ${esc(t.note)}</p>` : ''}
+        ${driver ? `<div class="text-sm text-slate-600 mt-2 flex items-center gap-1.5"><i data-lucide="user" class="w-[14px] h-[14px] text-slate-400"></i>Lái xe: ${esc(driver.name)} · ${esc(driver.phone)}</div>` : ''}
+        ${t.status === 'tu_choi' && t.rejectReason ? `<p class="text-xs text-red-600 mt-2">Lý do từ chối: ${esc(t.rejectReason)}</p>` : ''}
+        ${t.driverRejectReason ? `<p class="flex items-center gap-1 text-xs text-amber-700 mt-2"><i data-lucide="alert-triangle" class="w-[12px] h-[12px]"></i>Lái xe ${esc(t.rejectedByDriverName)} đã từ chối chuyến này. Lý do: ${esc(t.driverRejectReason)}</p>` : ''}
+        <div id="actions-${esc(t.id)}"></div>
+      </div>
+      <div class="perf"><div class="hole" style="top:-8px"></div><div class="hole" style="bottom:-8px"></div><div class="line"></div></div>
+      <div class="ticket-stub" style="background:${meta.stub}"><span>${esc(t.destination).toUpperCase()}</span></div>
+    </div>`;
+}
+
+function emptyHtml(text) {
+  return `<div class="text-center py-10 text-slate-400 text-sm border border-dashed border-slate-200 rounded-lg bg-white">${esc(text)}</div>`;
+}
+
+// ---------------------------------------------------------------------------
+// RENDER THEO VAI TRÒ
+// ---------------------------------------------------------------------------
+function render() {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userBadge').innerHTML =
+    `${esc(STATE.user.name)} <span class="text-slate-500">· ${ROLE_LABEL[STATE.user.role] || 'Chưa cấp quyền'}</span>`;
+
+  const main = document.getElementById('main');
+  if (!STATE.user.role) {
+    main.innerHTML = `<div class="max-w-md mx-auto mt-10 bg-white border border-amber-200 rounded-lg p-6 text-center">
+      <i data-lucide="lock" class="w-6 h-6 mx-auto mb-2 text-amber-500"></i>
+      <p class="text-sm text-slate-600">Tài khoản <b>${esc(STATE.user.email)}</b> chưa được cấp quyền sử dụng hệ thống.
+      Vui lòng liên hệ điều phối viên để được thêm vào tab "Roles" trong Google Sheet.</p>
+    </div>`;
+  } else if (STATE.user.role === 'sales') {
+    renderSales(main);
+  } else if (STATE.user.role === 'coordinator') {
+    renderCoordinator(main);
+  } else if (STATE.user.role === 'driver') {
+    renderDriver(main);
+  }
+  lucide.createIcons();
+}
+
+// ---------- SALES ----------
+function renderSales(main) {
+  main.innerHTML = `
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <p class="text-sm text-slate-600">Xin chào, <span class="font-semibold">${esc(STATE.user.name)}</span></p>
+      <button id="btnNewTrip" class="btn btn-dark"><i data-lucide="plus" class="w-4 h-4"></i>Tạo yêu cầu công tác</button>
+    </div>
+    <div id="salesForm"></div>
+    <div id="salesList" class="space-y-3 mt-4"></div>
+  `;
+  document.getElementById('btnNewTrip').onclick = () => toggleSalesForm(true);
+  renderMyTrips();
+}
+
+function toggleSalesForm(show) {
+  const box = document.getElementById('salesForm');
+  if (!show) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm mt-4 fade-in">
+      <h3 class="text-lg mb-3 font-display">YÊU CẦU CÔNG TÁC MỚI</h3>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="text-xs font-medium text-slate-500 mb-1 block">Phòng / khu vực kinh doanh</span><input id="f_department" class="in"></label>
+        <label class="block"><span class="text-xs font-medium text-slate-500 mb-1 block">Điểm đến</span><input id="f_destination" class="in"></label>
+        <label class="block"><span class="text-xs font-medium text-slate-500 mb-1 block">Số người đi cùng</span><input id="f_passengers" type="number" min="1" value="1" class="in"></label>
+        <label class="block"><span class="text-xs font-medium text-slate-500 mb-1 block">Ngày đi</span><input id="f_startDate" type="date" class="in"></label>
+        <label class="block"><span class="text-xs font-medium text-slate-500 mb-1 block">Ngày về</span><input id="f_endDate" type="date" class="in"></label>
+        <label class="block sm:col-span-2"><span class="text-xs font-medium text-slate-500 mb-1 block">Mục đích công tác</span><input id="f_purpose" class="in"></label>
+        <label class="block sm:col-span-2"><span class="text-xs font-medium text-slate-500 mb-1 block">Ghi chú (yêu cầu loại xe, v.v.)</span><input id="f_note" class="in"></label>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="btnCancelForm" class="btn btn-outline">Hủy</button>
+        <button id="btnSubmitForm" class="btn btn-amber">Gửi yêu cầu</button>
+      </div>
+    </div>`;
+  lucide.createIcons();
+  document.getElementById('btnCancelForm').onclick = () => toggleSalesForm(false);
+  document.getElementById('btnSubmitForm').onclick = submitTrip;
+}
+
+function submitTrip() {
+  const payload = {
+    department: document.getElementById('f_department').value.trim(),
+    destination: document.getElementById('f_destination').value.trim(),
+    purpose: document.getElementById('f_purpose').value.trim(),
+    startDate: document.getElementById('f_startDate').value,
+    endDate: document.getElementById('f_endDate').value,
+    passengers: document.getElementById('f_passengers').value,
+    note: document.getElementById('f_note').value.trim(),
+  };
+  if (!payload.department || !payload.destination || !payload.purpose || !payload.startDate || !payload.endDate) {
+    toast('Vui lòng điền đầy đủ thông tin bắt buộc.', true); return;
+  }
+  runAction(() => callServer('createTrip', payload), 'Đã gửi yêu cầu công tác.');
+  toggleSalesForm(false);
+}
+
+function renderMyTrips() {
+  const box = document.getElementById('salesList');
+  box.innerHTML = STATE.trips.length ? STATE.trips.map((t) => ticketHtml(t)).join('') : emptyHtml('Bạn chưa có yêu cầu công tác nào.');
+}
+
+// ---------- COORDINATOR ----------
+function renderCoordinator(main) {
+  const counts = {
+    cho_duyet: STATE.trips.filter((t) => t.status === 'cho_duyet').length,
+    da_duyet: STATE.trips.filter((t) => t.status === 'da_duyet').length,
+    da_sap_xe: STATE.trips.filter((t) => t.status === 'da_sap_xe').length,
+    da_nhan: STATE.trips.filter((t) => t.status === 'da_nhan').length,
+  };
+  main.innerHTML = `
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="stat" style="border-color:#fcd34d;background:#fffbeb"><div class="text-3xl leading-none font-display text-amber-700">${counts.cho_duyet}</div><div class="text-xs mt-1 font-medium text-amber-700">Chờ duyệt</div></div>
+      <div class="stat" style="border-color:#a5b4fc;background:#eef2ff"><div class="text-3xl leading-none font-display text-indigo-700">${counts.da_duyet}</div><div class="text-xs mt-1 font-medium text-indigo-700">Chờ sắp xe</div></div>
+      <div class="stat" style="border-color:#7dd3fc;background:#f0f9ff"><div class="text-3xl leading-none font-display text-sky-700">${counts.da_sap_xe}</div><div class="text-xs mt-1 font-medium text-sky-700">Chờ lái xe nhận</div></div>
+      <div class="stat" style="border-color:#6ee7b7;background:#ecfdf5"><div class="text-3xl leading-none font-display text-emerald-700">${counts.da_nhan}</div><div class="text-xs mt-1 font-medium text-emerald-700">Đang đi công tác</div></div>
+    </div>
+    <div id="coordFilters" class="flex gap-2 flex-wrap mt-4"></div>
+    <div id="coordList" class="space-y-3 mt-4"></div>
+    <div class="bg-white border border-slate-200 rounded-lg p-4 mt-6">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Đội xe &amp; lái xe</h3>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div><p class="text-xs text-slate-400 mb-1.5 font-mono">XE (${STATE.cars.length})</p>
+          ${STATE.cars.map((c) => `<div class="text-sm text-slate-700 flex items-center gap-2 py-0.5"><i data-lucide="car" class="w-[13px] h-[13px] text-slate-400"></i>${esc(c.plate)} · ${esc(c.type)} <span class="text-slate-400">(${esc(c.note)})</span></div>`).join('')}
+        </div>
+        <div><p class="text-xs text-slate-400 mb-1.5 font-mono">LÁI XE (${STATE.drivers.length})</p>
+          ${STATE.drivers.map((d) => `<div class="text-sm text-slate-700 flex items-center gap-2 py-0.5"><i data-lucide="user" class="w-[13px] h-[13px] text-slate-400"></i>${esc(d.name)} <span class="text-slate-400 flex items-center gap-1"><i data-lucide="phone" class="w-[11px] h-[11px]"></i>${esc(d.phone)}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  if (!window._coordFilter) window._coordFilter = 'cho_duyet';
+  const filters = ['cho_duyet', 'da_duyet', 'da_sap_xe', 'da_nhan', 'hoan_thanh', 'tu_choi', 'tat_ca'];
+  document.getElementById('coordFilters').innerHTML = filters.map((f) =>
+    `<button data-f="${f}" class="text-xs font-medium px-3 py-1.5 rounded-full border ${window._coordFilter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300'}">${f === 'tat_ca' ? 'Tất cả' : STATUS[f].label}</button>`
+  ).join('');
+  document.querySelectorAll('#coordFilters button').forEach((b) => b.onclick = () => { window._coordFilter = b.dataset.f; renderCoordinator(main); });
+  renderCoordList();
+  lucide.createIcons();
+}
+
+function renderCoordList() {
+  const filter = window._coordFilter || 'cho_duyet';
+  const list = STATE.trips.filter((t) => filter === 'tat_ca' || t.status === filter);
+  const box = document.getElementById('coordList');
+  box.innerHTML = list.length ? list.map((t) => ticketHtml(t)).join('') : emptyHtml('Không có yêu cầu nào ở trạng thái này.');
+  lucide.createIcons();
+  list.forEach((t) => renderCoordActions(t));
+}
+
+function renderCoordActions(t) {
+  const el = document.getElementById('actions-' + t.id);
+  if (!el) return;
+  if (t.status === 'cho_duyet') {
+    el.innerHTML = `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap" id="rejectBox-${t.id}">
+      <button class="btn btn-emerald" id="approve-${t.id}"><i data-lucide="check-circle-2" class="w-[14px] h-[14px]"></i>Duyệt</button>
+      <button class="btn btn-outline-red" id="showReject-${t.id}"><i data-lucide="x-circle" class="w-[14px] h-[14px]"></i>Từ chối</button>
+    </div>`;
+    document.getElementById('approve-' + t.id).onclick = () => runAction(() => callServer('approveTrip', { id: t.id }), 'Đã duyệt yêu cầu.');
+    document.getElementById('showReject-' + t.id).onclick = () => {
+      document.getElementById('rejectBox-' + t.id).innerHTML = `
+        <input id="reason-${t.id}" placeholder="Lý do từ chối…" class="in-sm flex-1 min-w-[180px]">
+        <button class="btn" style="background:#dc2626;color:#fff" id="confirmReject-${t.id}">Xác nhận</button>
+        <button class="btn btn-outline" id="cancelReject-${t.id}">Hủy</button>`;
+      document.getElementById('confirmReject-' + t.id).onclick = () => runAction(() => callServer('rejectTrip', { id: t.id, reason: document.getElementById('reason-' + t.id).value }), 'Đã từ chối yêu cầu.');
+      document.getElementById('cancelReject-' + t.id).onclick = () => renderCoordActions(t);
+    };
+  } else if (t.status === 'da_duyet') {
+    el.innerHTML = `<div class="mt-3 pt-3 border-t border-slate-100">
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="carSel-${t.id}" class="in-sm"><option value="">Chọn xe…</option>${STATE.cars.map((c) => `<option value="${c.id}">${esc(c.plate)} · ${esc(c.type)}</option>`).join('')}</select>
+        <select id="drvSel-${t.id}" class="in-sm"><option value="">Chọn lái xe…</option>${STATE.drivers.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>
+        <button class="btn btn-dark" id="assign-${t.id}"><i data-lucide="car" class="w-[14px] h-[14px]"></i>Sắp lịch</button>
+      </div>
+    </div>`;
+    document.getElementById('assign-' + t.id).onclick = () => {
+      const carId = document.getElementById('carSel-' + t.id).value;
+      const driverId = document.getElementById('drvSel-' + t.id).value;
+      if (!carId || !driverId) { toast('Vui lòng chọn xe và lái xe.', true); return; }
+      runAction(async () => {
+        const res = await callServer('assignTrip', { id: t.id, carId, driverId });
+        if (res.conflict) toast('Lưu ý: xe này đang trùng lịch với ' + res.conflict, true);
+      }, 'Đã sắp lịch xe.');
+    };
+  } else if (t.status === 'da_sap_xe') {
+    el.innerHTML = `<p class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs" style="color:#0369a1"><i data-lucide="bell" class="w-[13px] h-[13px]"></i>Đã gán xe · đang chờ lái xe vào ứng dụng nhận lịch trình.</p>`;
+  } else if (t.status === 'da_nhan') {
+    el.innerHTML = `<p class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-emerald-700"><i data-lucide="car" class="w-[13px] h-[13px]"></i>Lái xe đã nhận lịch và đang thực hiện chuyến đi.</p>`;
+  } else {
+    el.innerHTML = '';
+  }
+  lucide.createIcons();
+}
+
+// ---------- DRIVER ----------
+function renderDriver(main) {
+  const newCount = STATE.trips.filter((t) => t.status === 'da_sap_xe').length;
+  main.innerHTML = `
+    <p class="text-sm text-slate-600">Xin chào, <span class="font-semibold">${esc(STATE.user.name)}</span></p>
+    ${newCount > 0 ? `<div class="flex items-center gap-2 rounded-md px-4 py-3 text-sm mt-3" style="background:#fff1f2;border:1px solid #fecdd3;color:#be123c">
+      <i data-lucide="bell" class="w-4 h-4 shrink-0"></i>Bạn có <b>${newCount}</b> lịch công tác mới cần vào nhận bên dưới.</div>` : ''}
+    <div id="driverList" class="space-y-3 mt-4">
+      ${STATE.trips.length ? STATE.trips.map((t) => ticketHtml(t, { isNew: t.status === 'da_sap_xe' })).join('') : emptyHtml('Chưa có lịch trình công tác nào được gán cho bạn.')}
+    </div>
+  `;
+  lucide.createIcons();
+  STATE.trips.forEach((t) => renderDriverActions(t));
+}
+
+function renderDriverActions(t) {
+  const el = document.getElementById('actions-' + t.id);
+  if (!el) return;
+  if (t.status === 'da_sap_xe') {
+    el.innerHTML = `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap" id="declineBox-${t.id}">
+      <button class="btn btn-sky" id="receive-${t.id}"><i data-lucide="check-circle-2" class="w-[14px] h-[14px]"></i>Nhận lịch trình công tác</button>
+      <button class="btn btn-outline-red" id="showDecline-${t.id}"><i data-lucide="x-circle" class="w-[14px] h-[14px]"></i>Từ chối</button>
+    </div>`;
+    document.getElementById('receive-' + t.id).onclick = () => runAction(() => callServer('receiveTrip', { id: t.id }), 'Đã nhận lịch trình.');
+    document.getElementById('showDecline-' + t.id).onclick = () => {
+      document.getElementById('declineBox-' + t.id).innerHTML = `
+        <input id="declineReason-${t.id}" placeholder="Lý do từ chối (bận việc khác, xe hỏng...)" class="in-sm flex-1 min-w-[220px]">
+        <button class="btn" style="background:#dc2626;color:#fff" id="confirmDecline-${t.id}">Xác nhận từ chối</button>
+        <button class="btn btn-outline" id="cancelDecline-${t.id}">Hủy</button>`;
+      document.getElementById('confirmDecline-' + t.id).onclick = () => runAction(() => callServer('declineTrip', { id: t.id, reason: document.getElementById('declineReason-' + t.id).value }), 'Đã từ chối chuyến công tác.');
+      document.getElementById('cancelDecline-' + t.id).onclick = () => renderDriverActions(t);
+    };
+  } else if (t.status === 'da_nhan') {
+    el.innerHTML = `<div class="mt-3 pt-3 border-t border-slate-100">
+      <button class="btn btn-dark" id="finish-${t.id}"><i data-lucide="car" class="w-[14px] h-[14px]"></i>Xác nhận kết thúc công tác (đã về đến công ty)</button>
+    </div>`;
+    document.getElementById('finish-' + t.id).onclick = () => runAction(() => callServer('finishTrip', { id: t.id }), 'Đã hoàn thành chuyến công tác.');
+  } else if (t.status === 'hoan_thanh') {
+    el.innerHTML = `<p class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">Chuyến đi đã kết thúc.</p>`;
+  }
+  lucide.createIcons();
+}
+</script>
+</body>
+</html>
