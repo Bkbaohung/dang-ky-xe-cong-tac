@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Điều Phối Xe Công Tác</title>
+
+  <!-- PWA: cho phép "Cài đặt" app ra màn hình chính -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Điều Phối Xe">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -81,8 +92,8 @@
 // =============================================================================
 // CẤU HÌNH — điền đúng 2 giá trị này trước khi đưa lên GitHub Pages
 // =============================================================================
-const CLIENT_ID = '128308172666-pbjiad9kfr3i1evdv5csg61uotubd31p.apps.googleusercontent.com';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7sZnf5mKFGTUE2VmuaQhV29mX6wz5G9mlRQYxdUCGpLZoyaTbEGYOLjQ8XEwwHKZN/exec'; // dạng https://script.google.com/macros/s/AKfycb.../exec
+const CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE'; // dạng https://script.google.com/macros/s/AKfycb.../exec
 
 // ---------------------------------------------------------------------------
 // TRẠNG THÁI CHUNG
@@ -444,6 +455,15 @@ function renderDriverActions(t) {
     el.innerHTML = `<p class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">Chuyến đi đã kết thúc.</p>`;
   }
   lucide.createIcons();
+}
+
+// ---------------------------------------------------------------------------
+// PWA — đăng ký service worker để trình duyệt cho phép "Cài đặt" app
+// ---------------------------------------------------------------------------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* im lặng nếu trình duyệt không hỗ trợ */ });
+  });
 }
 </script>
 </body>
