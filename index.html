@@ -92,8 +92,8 @@
 // =============================================================================
 // CẤU HÌNH — điền đúng 2 giá trị này trước khi đưa lên GitHub Pages
 // =============================================================================
-const CLIENT_ID = '128308172666-pbjiad9kfr3i1evdv5csg61uotubd31p.apps.googleusercontent.com';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7sZnf5mKFGTUE2VmuaQhV29mX6wz5G9mlRQYxdUCGpLZoyaTbEGYOLjQ8XEwwHKZN/exec'; // dạng https://script.google.com/macros/s/AKfycb.../exec
+const CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE'; // dạng https://script.google.com/macros/s/AKfycb.../exec
 
 // ---------------------------------------------------------------------------
 // TRẠNG THÁI CHUNG
@@ -131,10 +131,16 @@ window.addEventListener('load', () => {
     client_id: CLIENT_ID,
     callback: handleCredentialResponse,
     ux_mode: 'popup',
+    auto_select: true,     // tự đăng nhập lại nếu máy vẫn còn phiên Google hợp lệ
+    cancel_on_tap_outside: false,
   });
   google.accounts.id.renderButton(document.getElementById('googleSignInDiv'), {
     theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill',
   });
+  // Thử tự đăng nhập ngay khi mở trang — nếu máy đã có sẵn phiên Google, vào thẳng
+  // luôn không cần bấm nút. Nếu không có phiên nào (hoặc trình duyệt chặn), sẽ tự
+  // rơi về hiện nút "Đăng nhập bằng Google" như bình thường, không báo lỗi gì cả.
+  google.accounts.id.prompt();
   lucide.createIcons();
 });
 
