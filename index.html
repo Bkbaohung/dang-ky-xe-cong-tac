@@ -82,7 +82,10 @@
             <p class="text-xs text-slate-400 mt-0.5 font-mono">Đặt lịch · Duyệt · Sắp xe · Lịch trình</p>
           </div>
         </div>
-        <div id="userBadge" class="text-sm text-slate-300"></div>
+        <div class="flex items-center gap-3">
+          <div id="userBadge" class="text-sm text-slate-300"></div>
+          <button onclick="logout()" class="text-xs text-slate-400 hover:text-white border border-slate-700 rounded-md px-2.5 py-1.5">Đăng xuất</button>
+        </div>
       </div>
     </header>
     <main id="main" class="max-w-5xl mx-auto px-5 py-6 space-y-5"></main>
@@ -92,8 +95,8 @@
 // =============================================================================
 // CẤU HÌNH — điền đúng 2 giá trị này trước khi đưa lên GitHub Pages
 // =============================================================================
-const CLIENT_ID = '128308172666-pbjiad9kfr3i1evdv5csg61uotubd31p.apps.googleusercontent.com';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7sZnf5mKFGTUE2VmuaQhV29mX6wz5G9mlRQYxdUCGpLZoyaTbEGYOLjQ8XEwwHKZN/exec'; // dạng https://script.google.com/macros/s/AKfycb.../exec
+const CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE'; // dạng https://script.google.com/macros/s/AKfycb.../exec
 
 // ---------------------------------------------------------------------------
 // TRẠNG THÁI CHUNG
@@ -109,7 +112,8 @@ const STATUS = {
 const ROLE_LABEL = { sales: 'Nhân viên kinh doanh', coordinator: 'Điều phối viên', driver: 'Lái xe' };
 
 let STATE = { user: null, cars: [], drivers: [], trips: [] };
-let ID_TOKEN = null;
+let AUTH_TOKEN = null;
+const SESSION_KEY = 'dpxct_session'; // key lưu "vé ghi nhớ đăng nhập" trong trình duyệt
 
 function fmtDate(s) {
   if (!s) return '';
@@ -119,9 +123,27 @@ function fmtDate(s) {
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ---------------------------------------------------------------------------
-// ĐĂNG NHẬP GOOGLE
+// ĐĂNG NHẬP GOOGLE + GHI NHỚ ĐĂNG NHẬP (30 ngày, lưu trong trình duyệt)
 // ---------------------------------------------------------------------------
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  // Nếu trình duyệt đã có sẵn "vé ghi nhớ" hợp lệ từ lần đăng nhập trước → vào thẳng luôn
+  const saved = localStorage.getItem(SESSION_KEY);
+  if (saved) {
+    AUTH_TOKEN = saved;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('loading').classList.remove('hidden');
+    try {
+      await refresh();
+      return; // vào thành công, không cần hiện màn hình đăng nhập
+    } catch (err) {
+      // Vé hết hạn hoặc không hợp lệ → xóa, rơi về màn hình đăng nhập bình thường
+      localStorage.removeItem(SESSION_KEY);
+      AUTH_TOKEN = null;
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+  }
+
   if (typeof google === 'undefined' || !google.accounts) {
     document.getElementById('loginError').textContent = 'Không tải được thư viện đăng nhập Google. Kiểm tra kết nối mạng và tải lại trang.';
     document.getElementById('loginError').classList.remove('hidden');
@@ -131,31 +153,35 @@ window.addEventListener('load', () => {
     client_id: CLIENT_ID,
     callback: handleCredentialResponse,
     ux_mode: 'popup',
-    auto_select: true,     // tự đăng nhập lại nếu máy vẫn còn phiên Google hợp lệ
-    cancel_on_tap_outside: false,
   });
   google.accounts.id.renderButton(document.getElementById('googleSignInDiv'), {
     theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill',
   });
-  // Thử tự đăng nhập ngay khi mở trang — nếu máy đã có sẵn phiên Google, vào thẳng
-  // luôn không cần bấm nút. Nếu không có phiên nào (hoặc trình duyệt chặn), sẽ tự
-  // rơi về hiện nút "Đăng nhập bằng Google" như bình thường, không báo lỗi gì cả.
-  google.accounts.id.prompt();
   lucide.createIcons();
 });
 
-function handleCredentialResponse(response) {
-  ID_TOKEN = response.credential;
+async function handleCredentialResponse(response) {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('loading').classList.remove('hidden');
-  refresh().catch((err) => {
+  try {
+    // Đổi token Google (chỉ dùng được ít phút) lấy một "vé ghi nhớ" sống 30 ngày
+    const session = await callServer('login', { idToken: response.credential });
+    AUTH_TOKEN = session.sessionId;
+    localStorage.setItem(SESSION_KEY, session.sessionId);
+    await refresh();
+  } catch (err) {
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
     const errEl = document.getElementById('loginError');
     errEl.textContent = (err && err.message) || String(err);
     errEl.classList.remove('hidden');
-    ID_TOKEN = null;
-  });
+    AUTH_TOKEN = null;
+  }
+}
+
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
 }
 
 // ---------------------------------------------------------------------------
@@ -163,11 +189,11 @@ function handleCredentialResponse(response) {
 // lỗi CORS khi gọi giữa 2 domain khác nhau (GitHub Pages ↔ script.google.com)
 // ---------------------------------------------------------------------------
 async function callServer(action, params) {
-  if (!ID_TOKEN) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang.');
+  if (action !== 'login' && !AUTH_TOKEN) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang.');
   if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
     throw new Error('Chưa cấu hình APPS_SCRIPT_URL trong file này.');
   }
-  const query = new URLSearchParams({ action: action, idToken: ID_TOKEN, ...(params || {}) });
+  const query = new URLSearchParams({ action: action, idToken: AUTH_TOKEN || '', ...(params || {}) });
   const resp = await fetch(APPS_SCRIPT_URL + '?' + query.toString());
   const json = await resp.json();
   if (!json.ok) throw new Error(json.error || 'Đã có lỗi xảy ra.');
