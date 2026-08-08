@@ -95,8 +95,8 @@
 // =============================================================================
 // CẤU HÌNH — điền đúng 2 giá trị này trước khi đưa lên GitHub Pages
 // =============================================================================
-const CLIENT_ID = '128308172666-pbjiad9kfr3i1evdv5csg61uotubd31p.apps.googleusercontent.com';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7sZnf5mKFGTUE2VmuaQhV29mX6wz5G9mlRQYxdUCGpLZoyaTbEGYOLjQ8XEwwHKZN/exec'; // dạng https://script.google.com/macros/s/AKfycb.../exec
+const CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE'; // dạng https://script.google.com/macros/s/AKfycb.../exec
 
 // ---------------------------------------------------------------------------
 // TRẠNG THÁI CHUNG
@@ -117,7 +117,9 @@ const SESSION_KEY = 'dpxct_session'; // key lưu "vé ghi nhớ đăng nhập" t
 
 function fmtDate(s) {
   if (!s) return '';
-  const [y, m, d] = String(s).split('-');
+  const datePart = String(s).split('T')[0]; // phòng hờ nếu lọt chuỗi ngày-giờ đầy đủ
+  const [y, m, d] = datePart.split('-');
+  if (!y || !m || !d) return String(s);
   return d + '/' + m + '/' + y;
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
